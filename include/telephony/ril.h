@@ -605,7 +605,7 @@ typedef enum {
        cases for error notification and potential retries. */
     PDP_FAIL_OPERATOR_BARRED = 0x08,               /* no retry */
     PDP_FAIL_INSUFFICIENT_RESOURCES = 0x1A,
-    PDP_FAIL_MISSING_UKNOWN_APN = 0x1B,            /* no retry */
+    PDP_FAIL_MISSING_UNKNOWN_APN = 0x1B,           /* no retry */
     PDP_FAIL_UNKNOWN_PDP_ADDRESS_TYPE = 0x1C,      /* no retry */
     PDP_FAIL_USER_AUTHENTICATION = 0x1D,           /* no retry */
     PDP_FAIL_ACTIVATION_REJECT_GGSN = 0x1E,        /* no retry */
