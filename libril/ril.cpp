@@ -91,7 +91,7 @@ namespace android {
 #define PRINTBUF_SIZE 8096
 
 // Enable RILC log
-#define RILC_LOG 0
+#define RILC_LOG 1
 
 #if RILC_LOG
     #define startRequest           sprintf(printBuf, "(")
@@ -406,6 +406,7 @@ readStringFromParcelInplace(Parcel &p, char *str, size_t maxLen) {
 }
 
 static void writeStringToParcel(Parcel &p, const char *s) {
+if (!s) { RLOGE("writeStringToParcel s is null"); }
     char16_t *s16;
     size_t s16_len;
     s16 = strdup8to16(s, &s16_len);
