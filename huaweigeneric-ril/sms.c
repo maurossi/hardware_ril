@@ -18,8 +18,7 @@
 
 int hex2int(char c)
 {
-    if (c>'9') return c-'A'+10;
-    return c-'0';
+    return (c>'9') ? c-'A'+10 : c-'0';
 }
 
 int getbit(char *s,int b)
@@ -28,8 +27,7 @@ int getbit(char *s,int b)
     int bit=b%4;
 
     int data=hex2int(s[byte]);
-    if (data&(1<<(3-bit))) return 1;
-        else return 0;
+    return (data&(1<<(3-bit))) ? 1 : 0;
 }
 
 const char hextable[17]="0123456789ABCDEF";
@@ -64,13 +62,12 @@ const char decode_table[17]=".1234567890*#...";
 
 void decode_number(char *msg, int length, char *no)
 {
-
     int ndigits=getbits(msg,2,8);
-    int j,digit;
+    int j;
 
     for (j=0;j<ndigits;j++)
-        *no++=decode_table[getbits(msg,10+j*4,4)];
-    *no=0;
+        *no++ = decode_table[getbits(msg,10+j*4,4)];
+    *no = 0;
 }
 
 int encode_digit(int d)
@@ -85,7 +82,6 @@ int encode_digit(int d)
 int encode_number(char *msg, char *no)
 {
     unsigned int i;
-    int digit;
 
     setbits(msg, 0, 2, 0);
     setbits(msg, 2, 8, strlen(no));
@@ -102,8 +98,8 @@ void get_code_and_length(char *msg, int *code, int *length)
 
 void decode_bearer_data(char *msg, int length, char *message, int *is_vm)
 {
-    int i=0,j;
-    int code,sublength;
+    int i = 0, j;
+    int code, sublength;
 
     while (i<length) {
         get_code_and_length(msg+i*2,&code,&sublength);
@@ -140,32 +136,32 @@ void decode_bearer_data(char *msg, int length, char *message, int *is_vm)
 
 int encode_bearer_data(char *msg, char *data)
 {
-    int msgid=0;
+    int msgid = 0;
     unsigned int i;
-        int b;
-    char *start=msg;
+    int b;
+    char *start = msg;
 
     for (i=0;i<strlen(data);i++)
-        msgid+=data[i];
+        msgid += data[i];
 
     setbits(msg,0,8,0); // message id
     setbits(msg,8,8,3); // 3 bytes
     setbits(msg,16,4,2); // 2 means send
     setbits(msg,20,16,msgid); // use message sum for id
-    msg+=10;
+    msg += 10;
     setbits(msg,0,8,01); // user data
     setbits(msg,16,5,02); // set encoding
     setbits(msg,21,8,strlen(data)); // length
-    b=29;
+    b = 29;
     for (i=0;i<strlen(data);i++) {
         setbits(msg,b,7,data[i]);
-        b=b+7;
+        b = b+7;
     }
     setbits(msg,8,8,(b+7)/8-2);
-    msg=msg+2*((b+7)/8);
+    msg = msg+2*((b+7)/8);
     setbits(msg,0,24,0x80100);
     setbits(msg,24,24,0x0D0100);
-    msg=msg+12;
+    msg = msg+12;
     return (msg-start)/2;
 }
 
@@ -242,7 +238,8 @@ char **cdma_to_gsmpdu(char *msg)
         smsaddr.toa = 0xd0;
     }
     sms_timestamp_now(&smstime);
-    SmsPDU *pdu=smspdu_create_deliver_utf8((const unsigned char *)message,strlen(message),&smsaddr,&smstime);
+    SmsPDU *pdu = smspdu_create_deliver_utf8(
+            (const unsigned char *)message, strlen(message), &smsaddr, &smstime);
     //hexpdu=malloc(512);
     char *s=hexpdu;
     while (*pdu) {
@@ -260,26 +257,28 @@ char **cdma_to_gsmpdu(char *msg)
 char *gsm_to_cdmapdu(char *msg)
 {
     char to[256];
-    char message[256];
+    unsigned char message[256];
     static char hexpdu[512];
     SmsAddressRec smsaddr;
-    sms_address_from_str(&smsaddr,"000000",6);
+    int length;
 
-    SmsPDU pdu=smspdu_create_from_hex( msg, strlen(msg) );
-    if (smspdu_get_receiver_address(pdu,&smsaddr)<0) {
+    sms_address_from_str(&smsaddr, "000000", 6);
+
+    SmsPDU pdu = smspdu_create_from_hex(msg, strlen(msg));
+    if (smspdu_get_receiver_address(pdu, &smsaddr) < 0) {
         ALOGE("Error: no receiver address");
-        smspdu_get_sender_address(pdu,&smsaddr);
+        smspdu_get_sender_address(pdu, &smsaddr);
     }
-    sms_address_to_str(&smsaddr,to,256);
+    sms_address_to_str(&smsaddr, to, 256);
     if (to[0]=='+') { // convert + to 00 otherwise international sms doesn't work
-        memmove(to+1,to,255);
+        memmove(to+1, to, 255);
         to[0]='0';
         to[1]='0';
     }
-    int length=smspdu_get_text_message(pdu, message, 256);
-    message[length]=0;
+    length = smspdu_get_text_message(pdu, message, 256);
+    message[length] = 0;
     smspdu_free(pdu);
-    ALOGD("GSM Message:%s To:%s\n",message,to);
-    encode_cdma_sms(hexpdu,to,message);
+    ALOGD("GSM Message:%s To:%s\n", message, to);
+    encode_cdma_sms(hexpdu, to, (char *)message);
     return hexpdu;
 }

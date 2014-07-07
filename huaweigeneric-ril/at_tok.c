@@ -27,16 +27,18 @@
  */
 int at_tok_start(char **p_cur)
 {
-    if (*p_cur == NULL)
+    if (*p_cur == NULL) {
         return -1;
+    }
 
     /* Skip prefix,
        consume "^[^:]:". */
 
     *p_cur = strchr(*p_cur, ':');
 
-    if (*p_cur == NULL)
+    if (*p_cur == NULL) {
         return -1;
+    }
 
     (*p_cur)++;
 
@@ -45,33 +47,34 @@ int at_tok_start(char **p_cur)
 
 static void skipWhiteSpace(char **p_cur)
 {
-    if (*p_cur == NULL)
-        return;
+    if (*p_cur == NULL) return;
 
-    while (**p_cur != '\0' && isspace(**p_cur))
+    while (**p_cur != '\0' && isspace(**p_cur)) {
         (*p_cur)++;
     }
+}
 
 static void skipNextComma(char **p_cur)
 {
-    if (*p_cur == NULL)
-        return;
+    if (*p_cur == NULL) return;
 
-    while (**p_cur != '\0' && **p_cur != ',')
-        (*p_cur)++;
-
-    if (**p_cur == ',')
+    while (**p_cur != '\0' && **p_cur != ',') {
         (*p_cur)++;
     }
+
+    if (**p_cur == ',') {
+        (*p_cur)++;
+    }
+}
 
 /**
  * If the first none space character is a quotation mark, returns the string
  * between two quotation marks, else returns the content before the first comma.
  * Updates *p_cur.
  */
-static char * nextTok(char **p_cur)
+static char *nextTok(char **p_cur)
 {
-    char *ret = NULL;
+    char *ret;
 
     skipWhiteSpace(p_cur);
 
@@ -85,47 +88,48 @@ static char * nextTok(char **p_cur)
 
         while (state != END) {
             switch (state) {
-            case NORMAL:
-                switch (**p_cur) {
-                case '\\':
-                    state = ESCAPE;
+                case NORMAL:
+                    switch (**p_cur) {
+                        case '\\':
+                            state = ESCAPE;
+                            break;
+                        case '"':
+                            state = END;
+                            break;
+                        case '\0':
+                            /*
+                             * Error case, parsing string is not quoted by ending
+                             * double quote, e.g. "bla bla, this function expects input
+                             * string to be NULL terminated, so that the loop can exit.
+                             */
+                            ret = NULL;
+                            goto exit;
+                        default:
+                            /* Stays in normal case. */
+                            break;
+                    }
                     break;
-                case '"':
-                    state = END;
+
+                case ESCAPE:
+                    state = NORMAL;
                     break;
-                case '\0':
-                    /*
-                     * Error case, parsing string is not quoted by ending
-                     * double quote, e.g. "bla bla, this function expects input
-                     * string to be NULL terminated, so that the loop can exit.
-                     */
-                    ret = NULL;
-                    goto exit;
+
                 default:
-                    /* Stays in normal case. */
+                    /* This should never happen. */
                     break;
-                }
-                break;
-
-            case ESCAPE:
-                state = NORMAL;
-                break;
-
-            default:
-                /* This should never happen. */
-                break;
             }
 
             if (state == END) {
                 **p_cur = '\0';
             }
 
-        (*p_cur)++;
+            (*p_cur)++;
         }
         skipNextComma(p_cur);
     } else {
         ret = strsep(p_cur, ",");
     }
+
 exit:
     return ret;
 }
@@ -148,9 +152,9 @@ static int at_tok_nextint_base(char **p_cur, int *p_out, int base, int  uns)
 
     ret = nextTok(p_cur);
 
-    if (ret == NULL)
+    if (ret == NULL) {
         return -1;
-    else {
+    } else {
         long l;
         char *end;
 
@@ -161,8 +165,9 @@ static int at_tok_nextint_base(char **p_cur, int *p_out, int base, int  uns)
 
         *p_out = (int)l;
 
-        if (end == ret)
+        if (end == ret) {
             return -1;
+        }
     }
 
     return 0;
@@ -197,29 +202,34 @@ int at_tok_nextbool(char **p_cur, char *p_out)
 
     ret = at_tok_nextint(p_cur, &result);
 
-    if (ret < 0)
+    if (ret < 0) {
         return -1;
+    }
 
     /* Booleans should be 0 or 1. */
-    if (!(result == 0 || result == 1))
+    if (!(result == 0 || result == 1)) {
         return -1;
+    }
 
-    if (p_out != NULL)
+    if (p_out != NULL) {
         *p_out = (char)result;
-    else
+    } else {
         return -1;
+    }
 
     return ret;
 }
 
 int at_tok_nextstr(char **p_cur, char **p_out)
 {
-    if (*p_cur == NULL)
+    if (*p_cur == NULL) {
         return -1;
+    }
 
     *p_out = nextTok(p_cur);
-    if (*p_out == NULL)
+    if (*p_out == NULL) {
         return -1;
+    }
 
     return 0;
 }
@@ -236,8 +246,9 @@ int at_tok_charcounter(char *p_in, char needle, int *p_out)
     char *p_cur = p_in;
     int num_found = 0;
 
-    if (p_in == NULL)
+    if (p_in == NULL) {
         return -1;
+    }
 
     while (*p_cur != '\0') {
         if (*p_cur == needle) {

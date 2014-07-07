@@ -99,17 +99,17 @@ void at_set_on_reader_closed(void (*onClose)(void));
 void at_send_escape(void);
 
 int at_send_command_singleline (const char *command,
-                                const char *responsePrefix,
-                                ATResponse **pp_outResponse,
-                                ...);
+        const char *responsePrefix,
+        ATResponse **pp_outResponse,
+        ...);
 
 int at_send_command_numeric (const char *command,
-                                 ATResponse **pp_outResponse);
+        ATResponse **pp_outResponse);
 
 int at_send_command_multiline (const char *command,
-                                const char *responsePrefix,
-                               ATResponse **pp_outResponse,
-                               ...);
+        const char *responsePrefix,
+        ATResponse **pp_outResponse,
+        ...);
 
 
 int at_handshake(void);
@@ -124,8 +124,8 @@ int at_send_command (const char *command, ...);
 int at_send_command_raw (const char *command, ATResponse **pp_outResponse);
 
 int at_send_command_sms (const char *command, const char *pdu,
-                            const char *responsePrefix,
-                            ATResponse **pp_outResponse);
+        const char *responsePrefix,
+        ATResponse **pp_outResponse);
 
 void at_response_free(ATResponse *p_response);
 

@@ -165,14 +165,14 @@ gsm_rope_add_timestamp( GsmRope  rope, const SmsTimeStampRec*  ts )
 int
 sms_address_to_str( SmsAddress  address, char*  str, int  strlen )
 {
-    bytes_t      data = address->data;
-    if(address->toa == 0x91)
-        *str++='+';
     int i;
     char c;
+    bytes_t data = address->data;
+    if (address->toa == 0x91)
+        *str++='+';
     for (i=0;i<address->len;i++) {
         c=data[i/2];
-        if(i&1) c=c>>4;
+        if (i&1) c=c>>4;
         *str++='0'+(c&15);
     }
     *str=0;
@@ -206,8 +206,8 @@ sms_address_from_str( SmsAddress  address, const char*  src, int  srclen )
     while (src < end) {
         int  c = *src++ - '0';
 
-        if ( (unsigned)c >= 10 ||
-              data >= address->data + sizeof(address->data) )
+        if ((unsigned)c >= 10 ||
+                data >= address->data + sizeof(address->data))
             goto Fail;
 
         data[0] |= c << shift;
@@ -231,7 +231,7 @@ Fail:
 int
 sms_address_from_bytes( SmsAddress  address, const unsigned char*  buf, int  buflen )
 {
-    int   len = sizeof(address->data), num_digits;
+    unsigned int len = sizeof(address->data), num_digits;
 
     if (buflen < 2)
         return -1;
@@ -357,8 +357,8 @@ sms_get_sc_address( cbytes_t   *pcur,
     int       result = -1;
 
     if (cur < end) {
-        int  len = cur[0];
-        int  dlen, adjust = 0;
+        unsigned int  len = cur[0];
+        unsigned int  dlen, adjust = 0;
 
         cur += 1;
 
@@ -438,7 +438,7 @@ sms_get_address( cbytes_t   *pcur,
 {
     cbytes_t  cur    = *pcur;
     int       result = -1;
-    int       len, dlen;
+    unsigned int len, dlen;
 
     if (cur >= end)
         goto Exit;
@@ -683,8 +683,7 @@ sms_get_text_utf8( cbytes_t        *pcur,
     len = *cur++;
 
     /* skip user data header if any */
-    if ( hasUDH )
-    {
+    if ( hasUDH ) {
         int  hlen;
 
         if (cur >= end)
@@ -709,11 +708,10 @@ sms_get_text_utf8( cbytes_t        *pcur,
     if (coding == SMS_CODING_SCHEME_GSM7) {
         int  count = utf8_from_gsm7( cur, 0, len, NULL );
 
-        if (rope != NULL)
-        {
+        if (rope != NULL) {
             bytes_t  dst = gsm_rope_reserve( rope, count );
-        if(hasUDH && dst)
-        *dst++=(*cur++)>>1;
+            if(hasUDH && dst)
+                *dst++=(*cur++)>>1;
             if (dst != NULL)
                 utf8_from_gsm7( cur, 0, len, dst );
         }
@@ -721,8 +719,7 @@ sms_get_text_utf8( cbytes_t        *pcur,
     } else if (coding == SMS_CODING_SCHEME_UCS2) {
         int  count = ucs2_to_utf8( cur, len/2, NULL );
 
-        if (rope != NULL)
-        {
+        if (rope != NULL) {
             bytes_t  dst = gsm_rope_reserve( rope, count );
             if (dst != NULL)
                 ucs2_to_utf8( cur, len/2, dst );
@@ -1065,7 +1062,7 @@ smspdu_create_from_hex( const char*  hex, int  hexlen )
         goto Exit;
     }
 
-    gsm_hex_to_bytes( hex, hexlen, p->base );
+    gsm_hex_to_bytes((cbytes_t) hex, hexlen, p->base );
     p->end = p->base + (hexlen+1)/2;
 
     data = p->base;

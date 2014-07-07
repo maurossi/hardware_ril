@@ -4,12 +4,15 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
+    agc.c \
     at_tok.c \
     atchannel.c \
+    echocancel.c \
     fcp_parser.c \
     gsm.c \
     huaweigeneric-ril.c \
     misc.c \
+    net-utils.c \
     requestdatahandler.c \
     sms.c \
     sms_gsm.c \

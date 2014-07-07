@@ -78,8 +78,8 @@ char *getFirstElementValue(const char* document,
                    to be used when document contains many tags with same name. */
                 if (remainingDocument != NULL)
                     *remainingDocument = end + strlen(elementEndTag);
+            }
         }
-    }
     }
     return value;
 }

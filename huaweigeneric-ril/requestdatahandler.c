@@ -183,10 +183,7 @@ static void *dispatchString(void *data, size_t datalen)
     (void) data; (void) datalen;
     assert(datalen == sizeof(char *));
 
-    if (data)
-        return strdup((char *) data);
-
-    return NULL;
+    return data ? strdup((char *) data) : NULL;
 }
 
 static void *dispatchStrings(void *data, size_t datalen)
@@ -199,11 +196,9 @@ static void *dispatchStrings(void *data, size_t datalen)
     assert((datalen % sizeof(char *)) == 0);
 
     ret = malloc(strCount * sizeof(char *));
-    memset(ret, 0, sizeof(char *) * strCount);
 
     for (i = 0; i < strCount; i++) {
-        if (a[i])
-            ret[i] = strdup(a[i]);
+        ret[i] = a[i] ? strdup(a[i]) : 0;
     }
 
     return (void *) ret;
@@ -211,20 +206,19 @@ static void *dispatchStrings(void *data, size_t datalen)
 
 static void *dispatchGsmBrSmsCnf(void *data, size_t datalen)
 {
-    RIL_GSM_BroadcastSmsConfigInfo **a =
-        (RIL_GSM_BroadcastSmsConfigInfo **) data;
+    RIL_GSM_BroadcastSmsConfigInfo **a;
     int count;
     void **ret;
     int i;
 
+    a = (RIL_GSM_BroadcastSmsConfigInfo **) data;
     count = datalen / sizeof(RIL_GSM_BroadcastSmsConfigInfo *);
 
     ret = malloc(count * sizeof(RIL_GSM_BroadcastSmsConfigInfo *));
-    memset(ret, 0, sizeof(*ret));
 
     for (i = 0; i < count; i++) {
-        if (a[i])
-            ret[i] = dispatchRaw(a[i], sizeof(RIL_GSM_BroadcastSmsConfigInfo));
+        ret[i] = a[i] ? dispatchRaw(a[i],
+                sizeof(RIL_GSM_BroadcastSmsConfigInfo)) : 0;
     }
 
     return ret;
@@ -248,10 +242,10 @@ static void freeDial(void *data)
 {
     RIL_Dial *d = data;
 
-    if (d->address)
+    if (d) {
         free(d->address);
-
-    free(d);
+        free(d);
+    }
 }
 
 static void freeStrings(void *data, size_t datalen)

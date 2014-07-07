@@ -138,13 +138,11 @@ static int initializeAtContext(void)
     ac = (struct atcontext *)pthread_getspecific(key);
 
     if (ac == NULL) {
-        ac = (struct atcontext *) malloc(sizeof(struct atcontext));
+        ac = (struct atcontext *) calloc(1, sizeof(struct atcontext));
         if (ac == NULL) {
             ALOGE("%s() Failed to allocate memory", __func__);
             goto error;
         }
-
-        memset(ac, 0, sizeof(struct atcontext));
 
         ac->fd = -1;
         ac->readerCmdFds[0] = -1;
@@ -223,8 +221,8 @@ void  AT_DUMP(const char*  prefix, const char*  buff, int  len)
 
 #ifndef HAVE_ANDROID_OS
 int pthread_cond_timeout_np(pthread_cond_t *cond,
-                            pthread_mutex_t * mutex,
-                            unsigned msecs)
+        pthread_mutex_t * mutex,
+        unsigned msecs)
 {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -280,6 +278,7 @@ static const char * s_finalResponsesError[] = {
     "NO CARRIER",      /* Sometimes! */
     "NO ANSWER",
     "NO DIALTONE",
+    "COMMAND NOT SUPPORT",
 };
 
 static int isFinalResponseError(const char *line)
@@ -425,7 +424,7 @@ static void processLine(const char *line)
  *
  * returns NULL if there is no complete line.
  */
-static char * findNextEOL(char *cur)
+static char *findNextEOL(char *cur)
 {
     if (cur[0] == '>' && cur[1] == ' ' && cur[2] == '\0') {
         /* SMS prompt character...not \r terminated */
@@ -458,7 +457,7 @@ static const char *readline(void)
     char *ret = NULL;
 
     struct atcontext *ac = getAtContext();
-    read(ac->fd,NULL,0);
+    read(ac->fd, NULL, 0);
 
     /* This is a little odd. I use *s_ATBufferCur == 0 to mean
      * "buffer consumed completely". If it points to a character,
@@ -473,8 +472,9 @@ static const char *readline(void)
         /* There's data in the buffer from the last read. */
 
         /* skip over leading newlines */
-        while (*ac->ATBufferCur == '\r' || *ac->ATBufferCur == '\n')
+        while (*ac->ATBufferCur == '\r' || *ac->ATBufferCur == '\n') {
             ac->ATBufferCur++;
+        }
 
         p_eol = findNextEOL(ac->ATBufferCur);
 
@@ -540,14 +540,14 @@ static const char *readline(void)
         if (!(pfds[0].revents & POLLIN))
             continue;
 
-        do
+        do {
             /* The size argument should be synchronized to the ditch buffer
              * condition above.
              */
             count = read(ac->fd, p_read,
                          MAX_AT_RESPONSE - (p_read - ac->ATBuffer) - 2);
 
-        while (count < 0 && errno == EINTR);
+        } while (count < 0 && errno == EINTR);
 
         if (count > 0) {
             AT_DUMP( "<< ", p_read, count );
@@ -626,7 +626,7 @@ static void *readerLoop(void *arg)
         if (line == NULL)
             break;
 
-        if(isSMSUnsolicited(line)) {
+        if (isSMSUnsolicited(line)) {
             char *line1;
             const char *line2;
 
@@ -645,9 +645,10 @@ static void *readerLoop(void *arg)
                 ac->unsolHandler(line1, line2);
 
             free(line1);
-        } else
+        } else {
             processLine(line);
         }
+    }
 
     onReaderClosed();
     ALOGI("Exiting readerloop!");
@@ -751,21 +752,21 @@ static void clearPendingCommand(void)
     ac->response = NULL;
     ac->responsePrefix = NULL;
     ac->smsPDU = NULL;
-    }
+}
 
 static AT_Error merror(int type, int error)
 {
     switch(type) {
-    case AT_ERROR :
-        return (AT_Error)(AT_ERROR_BASE + error);
-    case CME_ERROR :
-        return (AT_Error)(CME_ERROR_BASE + error);
-    case CMS_ERROR:
-        return (AT_Error)(CMS_ERROR_BASE + error);
-    case GENERIC_ERROR:
-        return (AT_Error)(GENERIC_ERROR_BASE + error);
-    default:
-        return (AT_Error)(GENERIC_ERROR_UNSPECIFIED);
+        case AT_ERROR :
+            return (AT_Error)(AT_ERROR_BASE + error);
+        case CME_ERROR :
+            return (AT_Error)(CME_ERROR_BASE + error);
+        case CMS_ERROR:
+            return (AT_Error)(CMS_ERROR_BASE + error);
+        case GENERIC_ERROR:
+            return (AT_Error)(GENERIC_ERROR_BASE + error);
+        default:
+            return (AT_Error)(GENERIC_ERROR_UNSPECIFIED);
     }
 }
 
@@ -796,7 +797,7 @@ static AT_Error at_get_error(const ATResponse *p_response)
     if (err < 0)
         return merror(GENERIC_ERROR, GENERIC_ERROR_UNSPECIFIED);
 
-    if(strStartsWith(p_response->finalResponse, "+CME ERROR:"))
+    if (strStartsWith(p_response->finalResponse, "+CME ERROR:"))
         return merror(CME_ERROR, ret);
     else if (strStartsWith(p_response->finalResponse, "+CMS ERROR:"))
         return merror(CMS_ERROR, ret);
@@ -902,8 +903,8 @@ void at_response_free(ATResponse *p_response)
         free(p_toFree);
     }
 
-    free (p_response->finalResponse);
-    free (p_response);
+    free(p_response->finalResponse);
+    free(p_response);
 }
 
 /**
@@ -932,11 +933,10 @@ static void reverseIntermediates(ATResponse *p_response)
  * timeoutMsec == 0 means infinite timeout.
  */
 static int at_send_command_full_nolock (const char *command, ATCommandType type,
-                    const char *responsePrefix, const char *smspdu,
-                    long long timeoutMsec, ATResponse **pp_outResponse)
+        const char *responsePrefix, const char *smspdu,
+        long long timeoutMsec, ATResponse **pp_outResponse)
 {
     int err = AT_NOERROR;
-
     struct atcontext *ac = getAtContext();
 
     /* Default to NULL, to allow caller to free securely even if
@@ -962,7 +962,7 @@ static int at_send_command_full_nolock (const char *command, ATCommandType type,
         goto finally;
     }
 
-    err = writeline (command);
+    err = writeline(command);
 
     if (err != AT_NOERROR)
         goto finally;
@@ -977,15 +977,15 @@ static int at_send_command_full_nolock (const char *command, ATCommandType type,
             err = AT_ERROR_TIMEOUT;
             goto finally;
         }
-        }
+    }
 
     if (ac->response->success == 0) {
         err = at_get_error(ac->response);
     }
 
-    if (pp_outResponse == NULL)
+    if (pp_outResponse == NULL) {
         at_response_free(ac->response);
-    else {
+    } else {
         /* Line reader stores intermediate responses in reverse order. */
         reverseIntermediates(ac->response);
         *pp_outResponse = ac->response;
@@ -993,7 +993,7 @@ static int at_send_command_full_nolock (const char *command, ATCommandType type,
 
     ac->response = NULL;
 
-    if(ac->readerClosed > 0) {
+    if (ac->readerClosed > 0) {
         err = AT_ERROR_CHANNEL_CLOSED;
         goto finally;
     }
@@ -1013,8 +1013,8 @@ finally:
  * timeoutMsec == 0 means infinite timeout.
  */
 static int at_send_command_full (const char *command, ATCommandType type,
-                    const char *responsePrefix, const char *smspdu,
-                    long long timeoutMsec, ATResponse **pp_outResponse, int useap, va_list ap)
+        const char *responsePrefix, const char *smspdu,
+        long long timeoutMsec, ATResponse **pp_outResponse, int useap, va_list ap)
 {
     int err;
 
@@ -1029,16 +1029,17 @@ static int at_send_command_full (const char *command, ATCommandType type,
     pthread_mutex_lock(&ac->commandmutex);
     if (useap) {
         if (!vsnprintf(strbuf, BUFFSIZE, command, ap)) {
-           pthread_mutex_unlock(&ac->commandmutex);
-           return AT_ERROR_STRING_CREATION;
-    }
+            pthread_mutex_unlock(&ac->commandmutex);
+            return AT_ERROR_STRING_CREATION;
+        }
         ptr = strbuf;
-    } else
+    } else {
         ptr = command;
+    }
 
     err = at_send_command_full_nolock(ptr, type,
-                    responsePrefix, smspdu,
-                    timeoutMsec, pp_outResponse);
+            responsePrefix, smspdu,
+            timeoutMsec, pp_outResponse);
 
     pthread_mutex_unlock(&ac->commandmutex);
 
@@ -1054,9 +1055,9 @@ void at_send_escape (void)
     struct atcontext *ac = getAtContext();
     int written;
 
-    do
+    do {
         written = write (ac->fd, "\033" , 1);
-    while ((written < 0 && errno == EINTR) || (written == 0));
+    } while ((written < 0 && errno == EINTR) || (written == 0));
 }
 
 /**
@@ -1102,8 +1103,8 @@ int at_send_command_raw (const char *command, ATResponse **pp_outResponse)
 }
 
 int at_send_command_singleline (const char *command,
-                                const char *responsePrefix,
-                                 ATResponse **pp_outResponse, ...)
+        const char *responsePrefix,
+        ATResponse **pp_outResponse, ...)
 {
     int err;
 
@@ -1111,8 +1112,8 @@ int at_send_command_singleline (const char *command,
     va_list ap;
     va_start(ap, pp_outResponse);
 
-    err = at_send_command_full (command, SINGLELINE, responsePrefix,
-                                    NULL, ac->timeoutMsec, pp_outResponse, 1, ap);
+    err = at_send_command_full(command, SINGLELINE, responsePrefix,
+            NULL, ac->timeoutMsec, pp_outResponse, 1, ap);
 
     if (err == AT_NOERROR && pp_outResponse != NULL
             && (*pp_outResponse) != NULL
@@ -1136,14 +1137,14 @@ int at_send_command_singleline (const char *command,
 }
 
 int at_send_command_numeric (const char *command,
-                                 ATResponse **pp_outResponse)
+        ATResponse **pp_outResponse)
 {
     int err;
 
     struct atcontext *ac = getAtContext();
 
-    err = at_send_command_full (command, NUMERIC, NULL,
-                                NULL, ac->timeoutMsec, pp_outResponse, 0, empty);
+    err = at_send_command_full(command, NUMERIC, NULL,
+            NULL, ac->timeoutMsec, pp_outResponse, 0, empty);
 
     if (err == AT_NOERROR && pp_outResponse != NULL
             && (*pp_outResponse) != NULL
@@ -1166,16 +1167,16 @@ int at_send_command_numeric (const char *command,
 
 
 int at_send_command_sms (const char *command,
-                                const char *pdu,
-                                const char *responsePrefix,
-                                 ATResponse **pp_outResponse)
+        const char *pdu,
+        const char *responsePrefix,
+        ATResponse **pp_outResponse)
 {
     int err;
 
     struct atcontext *ac = getAtContext();
 
-    err = at_send_command_full (command, SINGLELINE, responsePrefix,
-                                    pdu, ac->timeoutMsec, pp_outResponse, 0, empty);
+    err = at_send_command_full(command, SINGLELINE, responsePrefix,
+            pdu, ac->timeoutMsec, pp_outResponse, 0, empty);
 
     if (err == AT_NOERROR && pp_outResponse != NULL
             && (*pp_outResponse) != NULL
@@ -1198,8 +1199,8 @@ int at_send_command_sms (const char *command,
 
 
 int at_send_command_multiline (const char *command,
-                                const char *responsePrefix,
-                                 ATResponse **pp_outResponse, ...)
+        const char *responsePrefix,
+        ATResponse **pp_outResponse, ...)
 {
     int err;
 
@@ -1208,7 +1209,7 @@ int at_send_command_multiline (const char *command,
     va_start(ap, pp_outResponse);
 
     err = at_send_command_full (command, MULTILINE, responsePrefix,
-                                    NULL, ac->timeoutMsec, pp_outResponse, 1, ap);
+            NULL, ac->timeoutMsec, pp_outResponse, 1, ap);
     va_end(ap);
 
     /* Free response in case of error */
@@ -1304,7 +1305,7 @@ AT_Error at_get_at_error(int error)
         return (AT_Error)(error - AT_ERROR_BASE);
     else
         return AT_ERROR_NON_AT;
-    }
+}
 
 AT_CME_Error at_get_cme_error(int error)
 {
@@ -1313,7 +1314,7 @@ AT_CME_Error at_get_cme_error(int error)
         return (AT_CME_Error)(error - CME_ERROR_BASE);
     else
         return CME_ERROR_NON_CME;
-    }
+}
 
 AT_CMS_Error at_get_cms_error(int error)
 {
@@ -1331,7 +1332,7 @@ AT_Generic_Error at_get_generic_error(int error)
         return (AT_Generic_Error)(error - GENERIC_ERROR_BASE);
     else
         return GENERIC_ERROR_NON_GENERIC;
-    }
+}
 
 AT_Error_type at_get_error_type(int error)
 {
@@ -1352,7 +1353,7 @@ AT_Error_type at_get_error_type(int error)
         return GENERIC_ERROR;
 
     return UNKNOWN_ERROR;
-    }
+}
 
 #define quote(x) #x
 
@@ -1361,17 +1362,17 @@ const char *at_str_err(int error)
     const char *s = "--UNKNOWN--";
 
     error = -error;
-    switch(error) {
+    switch (error) {
 #define AT(name, num) case num + AT_ERROR_BASE: s = quote(AT_##name); break;
 #define CME(name, num) case num + CME_ERROR_BASE: s = quote(CME_##name); break;
 #define CMS(name, num) case num + CMS_ERROR_BASE: s = quote(CMS_##name); break;
 #define GENERIC(name, num) case num + GENERIC_ERROR_BASE: s = quote(GENERIC_##name); break;
-    mbm_error
+        mbm_error
 #undef AT
 #undef CME
 #undef CMS
 #undef GENERIC
-}
+    }
 
     return s;
 }
